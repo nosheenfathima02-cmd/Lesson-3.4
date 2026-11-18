@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settlement Quest · CGC1W Lesson 3.4</title>
+<style>
+:root{--navy:#1f3864;--ink:#1a1a1a;--light:#eef2f8;--mid:#c9d3e6;--ok:#1b6e3a;--bad:#a12622;--gold:#b8860b}
+*{box-sizing:border-box}body{margin:0;font:16px/1.45 Calibri,Segoe UI,Arial,sans-serif;color:var(--ink);background:#f6f7fb}
+header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{font:700 22px Cambria,Georgia,serif;margin:0;flex:1}
+.pill{background:#fff;color:var(--navy);border-radius:20px;padding:4px 14px;font-weight:700}
+main{max-width:980px;margin:18px auto;padding:0 14px}
+.card{background:#fff;border:1px solid var(--mid);border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+h2{font:700 21px Cambria,Georgia,serif;color:var(--navy);margin:0 0 6px}
+.sub{color:#555;margin:0 0 12px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:2px solid var(--navy);background:#fff;color:var(--navy);padding:8px 14px;font-weight:600}
+button.primary{background:var(--navy);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.chip{border:2px solid var(--navy);border-radius:10px;padding:8px 12px;background:var(--light);cursor:pointer;user-select:none}
+.chip.sel{outline:3px solid var(--gold)}
+.chip.right{border-color:var(--ok);background:#e3f3e8}.chip.right::after{content:"  ✔"}
+.chip.wrong{border-color:var(--bad);background:#f8e3e2}.chip.wrong::after{content:"  ✘"}
+.bin{flex:1;min-width:260px;border:2px dashed var(--navy);border-radius:12px;padding:10px;min-height:150px;background:#fff}
+.bin h3{margin:0 0 8px;font-size:17px;color:var(--navy)}
+.bin.hot{background:var(--light)}
+.fb{margin-top:10px;font-weight:600}.fb.ok{color:var(--ok)}.fb.bad{color:var(--bad)}
+.opt{display:block;width:100%;text-align:left;margin:6px 0;background:#fff}
+.opt.right{border-color:var(--ok);background:#e3f3e8}.opt.wrong{border-color:var(--bad);background:#f8e3e2}
+.bar{height:10px;background:var(--light);border-radius:6px;overflow:hidden;margin:6px 0 12px}.bar>div{height:100%;background:var(--navy);transition:width .3s}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.steps span{padding:3px 10px;border-radius:14px;background:rgba(255,255,255,.18);font-size:14px}.steps span.on{background:#fff;color:var(--navy);font-weight:700}
+svg text{font-family:Calibri,Arial,sans-serif}
+.site{cursor:pointer}.site circle{fill:#fff;stroke:var(--navy);stroke-width:3}.site.sel circle{fill:var(--gold)}
+.clue{background:var(--light);border-left:5px solid var(--navy);padding:8px 12px;margin:6px 0;border-radius:6px}
+textarea,input[type=text]{font:inherit;width:100%;padding:8px;border:1px solid #999;border-radius:8px}
+.stars button{font-size:15px;margin:3px}
+.small{font-size:14px;color:#555}
+.big{font-size:42px;font-weight:700;color:var(--navy);font-family:Cambria,Georgia,serif}
+.hidden{display:none}
+.timer{font-weight:700;color:var(--navy)}
+.why{background:#fff8e6;border:1px solid #e0c27a;border-radius:8px;padding:8px 12px;margin-top:8px}
+.tbl{border-collapse:collapse;width:100%;margin:8px 0}.tbl td,.tbl th{border:1px solid #aab;padding:6px 8px;text-align:left}.tbl th{background:var(--navy);color:#fff}
+</style></head><body>
+<header><h1>Settlement Quest: Why Do People Live Where They Do?</h1><span class="pill" id="score">Score: 0</span>
+<div class="steps" id="steps"></div></header>
+<main id="app"></main>
+<script>
+const PTS=10;
+let S;
+function reset(){S={score:0,max:0,name:S?S.name:'',level:0,lv:{},miss:[],rate:{},r1:'',r2:''}}
+reset();
+const LV=['Start','1 Sort','2 Ladder','3 Pick a Site','4 Quick-Fire','5 Mystery Town','Finish'];
+const LN={1:'Level 1: Physical or human',2:'Level 2: Settlement ladder',3:'Level 3: Pick a site',4:'Level 4: Quick-fire',5:'Level 5: Mystery town'};
+const app=document.getElementById('app');
+function upd(){document.getElementById('score').textContent='Score: '+S.score+' / '+S.max}
+function rec(lvl,ok,q,correct,why){S.max+=PTS;const L=S.lv[lvl]||(S.lv[lvl]={c:0,n:0});L.n++;if(ok){L.c++;S.score+=PTS}else S.miss.push({lvl,q,correct,why});upd()}
+function steps(){document.getElementById('steps').innerHTML=LV.map((l,i)=>`<span class="${i===S.level?'on':''}">${l}</span>`).join('')}
+function go(n){S.level=n;steps();[start,sortGame,ladder,siteGame,quick,mystery,finish][n]();window.scrollTo(0,0)}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function fbk(ok,why,extra){return `<div class="fb ${ok?'ok':'bad'}">${ok?'✔ Correct! +'+PTS+' points':'✘ Not correct. +0 points'}</div><div class="why"><b>Why:</b> ${why}</div>${extra||''}`}
+
+function start(){app.innerHTML=`<div class="card"><h2>Welcome, geographer!</h2>
+<p class="sub">Five levels about settlement: types, site and situation, and the factors that decide where people live.</p>
+<ul><li>You get <b>ONE try</b> for each question.</li><li>Every correct answer = <b>${PTS} points</b>, the same for everyone.</li><li>After each answer you will see the correct answer and <b>why</b>.</li><li>At the end you can download your results card (PDF) or play the whole game again.</li></ul>
+<label>Your name: <input type="text" id="nm" placeholder="First and last name" value="${S.name}"></label>
+<p class="small">Assessment FOR learning: practice with feedback, not a mark.</p>
+<button class="primary" id="go">Start the quest</button> <span class="fb bad" id="nmw"></span></div>`;
+document.getElementById('go').onclick=()=>{const v=document.getElementById('nm').value.trim();if(!v){document.getElementById('nmw').textContent='Please type your name first.';return}S.name=v;go(1)}}
+
+// LEVEL 1
+const CARDS=[['Mild climate with a long growing season','P','Climate is part of the natural environment.'],['Deep, fertile soil for farming','P','Soil is a natural feature of the land.'],['Flat land that is easy to build on','P','Landforms (relief) are physical.'],['A river for fresh water and transport','P','A river is a natural water feature (even though people use it for transport).'],['A large nickel deposit','P','Minerals are natural resources in the ground.'],['Permafrost and thin, rocky soil','P','Frozen ground and rock are physical conditions that keep people away.'],['A railway line through the town','H','People built the railway: transportation is a human factor.'],['Many jobs in technology and services','H','Jobs and the economy are created by people.'],['A hospital and a university','H','Services are human factors.'],['Relatives and a cultural community already live there','H','Family and community are human factors.'],['A historic Indigenous meeting place and trading post','H','History is a human factor.'],['The provincial government offices','H','Government is a human factor.']];
+function sortGame(){let i=0;const deck=shuffle(CARDS);
+app.innerHTML=`<div class="card"><h2>Level 1: Physical or Human?</h2><p class="sub">Read the card and choose its box. Physical = the natural environment. Human = people, the economy, history. One try each.</p>
+<div class="bar"><div id="pb"></div></div><div id="q"></div></div>`;
+function show(){document.getElementById('pb').style.width=(i/deck.length*100)+'%';
+ if(i>=deck.length){const L=S.lv[1];document.getElementById('q').innerHTML=`<p class="fb ok">Level 1 done: ${L.c} of ${L.n} correct.</p><button class="primary" onclick="go(2)">Next level</button>`;return}
+ const [t,b,why]=deck[i];
+ document.getElementById('q').innerHTML=`<p>Card ${i+1} of ${deck.length}</p><div class="chip" style="font-size:19px;display:inline-block">${t}</div>
+ <div class="row" style="margin-top:12px"><button class="bin" data-b="P" style="min-height:80px"><h3>Physical factor</h3></button><button class="bin" data-b="H" style="min-height:80px"><h3>Human factor</h3></button></div><div id="fb"></div>`;
+ document.querySelectorAll('.bin').forEach(x=>x.onclick=()=>{document.querySelectorAll('.bin').forEach(y=>y.disabled=true);const ok=x.dataset.b===b;
+  rec(1,ok,t,b==='P'?'Physical':'Human',why);
+  document.querySelector(`.bin[data-b="${b}"]`).classList.add('hot');
+  document.getElementById('fb').innerHTML=fbk(ok,(ok?'':'The correct answer is <b>'+(b==='P'?'Physical':'Human')+'</b>. ')+why,`<p><button class="primary" id="nx">Next card</button></p>`);
+  document.getElementById('nx').onclick=()=>{i++;show()}})}
+show()}
+
+// LEVEL 2
+const DESC=[['Pine Creek: 70 people, a gas station and a few farms','Hamlet','Very few people and only one or two basic services.'],['Northvale: 700 people, an elementary school and a small store','Village','A few hundred people with a few basic services.'],['Riverside: 6,000 people, a high school, a clinic and a supermarket','Town','Thousands of people and everyday services, but no hospital or university.'],['Maple City: 90,000 people, a hospital, a college and two malls','City','Tens of thousands of people and higher services such as a hospital.'],['Port Bay: 2 million people, a subway, an international airport and universities','Metropolis','Over 100,000 people (a census metropolitan area) and the highest-level services.']];
+function ladder(){let i=0;const order=shuffle(DESC);
+app.innerHTML=`<div class="card"><h2>Level 2: Climb the Settlement Ladder</h2><p class="sub">Read each place and choose its type. One try each.</p><div class="bar"><div id="pb"></div></div><div id="q"></div></div>`;
+function show(){document.getElementById('pb').style.width=(i/order.length*100)+'%';
+ if(i>=order.length){const L=S.lv[2];document.getElementById('q').innerHTML=`<p class="fb ok">Level 2 done: ${L.c} of ${L.n} correct. Remember: hamlet → village → town → city → metropolis.</p><button class="primary" onclick="go(3)">Next level</button>`;return}
+ const [d,a,why]=order[i];
+ document.getElementById('q').innerHTML=`<p><b>${d}</b></p>`+['Hamlet','Village','Town','City','Metropolis'].map(o=>`<button class="opt" data-o="${o}">${o}</button>`).join('')+'<div id="fb"></div>';
+ document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{document.querySelectorAll('.opt').forEach(x=>{x.disabled=true;if(x.dataset.o===a)x.classList.add('right')});const ok=b.dataset.o===a;if(!ok)b.classList.add('wrong');
+  rec(2,ok,d,a,why);document.getElementById('fb').innerHTML=fbk(ok,(ok?'':'It is a <b>'+a+'</b>. ')+why,`<p><button class="primary" id="nx">Next</button></p>`);document.getElementById('nx').onclick=()=>{i++;show()}})}
+show()}
+
+// LEVEL 3
+const SITES={A:{t:'Site A: flat farmland where the river meets the railway',best:true,why:'Flat land, fresh water, fertile soil and transport (river and railway) all in one place.'},
+B:{t:'Site B: rocky hill on the Canadian Shield, far north',why:'Thin rocky soil, cold climate and no road or railway: very hard to farm, build and supply.'},
+C:{t:'Site C: low land in the river delta',why:'Flat and near water, but it floods every spring, so homes would be damaged.'},
+D:{t:'Site D: small island in the lake',why:'No room to grow and hard to reach without a bridge or ferry.'}};
+const REASONS=[['Fresh water from the river',1],['Flat land that is easy to build on',1],['Fertile soil for farms nearby',1],['On the railway for trade and transport',1],['Far away from other people',0],['Steep, rocky ground',0],['Floods every spring',0]];
+function siteGame(){let pick=null;
+app.innerHTML=`<div class="card"><h2>Level 3: Pick the Best Site for a New Town</h2><p class="sub">Click ONE site on the map, then tick THREE reasons. One try. (10 points for the site + 10 for each good reason = 40 points.)</p>
+<svg viewBox="0 0 620 380" width="100%" role="img" aria-label="Map with four possible sites A to D">
+<rect width="620" height="380" fill="#fff" stroke="#1f3864"/>
+<polygon points="0,0 620,0 620,90 0,110" fill="#d9d9d9"/><text x="250" y="45" font-size="16">TUNDRA AND CANADIAN SHIELD (rocky, cold)</text>
+<path d="M300,110 C280,170 330,210 300,260 C280,300 320,330 300,380" stroke="#7a8fb3" stroke-width="16" fill="none"/><text x="315" y="160" font-size="14">river</text>
+<ellipse cx="500" cy="270" rx="110" ry="70" fill="#dfe6f3" stroke="#1f3864"/><text x="470" y="250" font-size="14">LAKE</text>
+<line x1="0" y1="220" x2="420" y2="200" stroke="#1a1a1a" stroke-width="3" stroke-dasharray="12,6"/><text x="20" y="212" font-size="14">railway</text>
+<rect x="60" y="250" width="200" height="100" fill="none" stroke="#777" stroke-dasharray="4,3"/><text x="85" y="305" font-size="14">fertile farmland</text>
+<polygon points="300,330 360,300 400,380 290,380" fill="#cfd8e8" stroke="#555" stroke-dasharray="3,3"/><text x="330" y="370" font-size="12">delta (floods)</text>
+${[['A',300,210],['B',140,60],['C',345,345],['D',530,290]].map(([l,x,y])=>`<g class="site" data-s="${l}"><circle cx="${x}" cy="${y}" r="17"/><text x="${x}" y="${y+6}" text-anchor="middle" font-size="18" font-weight="700">${l}</text></g>`).join('')}
+<text x="590" y="370" font-size="16" font-weight="700">N↑</text></svg>
+<p id="pk" class="small">No site chosen yet.</p><div id="rs">${REASONS.map((r,i)=>`<label class="chip" style="display:inline-block;margin:4px"><input type="checkbox" value="${i}"> ${r[0]}</label>`).join('')}</div>
+<p><button class="primary" id="ck">Check my plan</button> <span class="fb bad" id="warn"></span></p><div id="fb"></div></div>`;
+let locked=false;
+document.querySelectorAll('.site').forEach(g=>g.onclick=()=>{if(locked)return;document.querySelectorAll('.site').forEach(x=>x.classList.remove('sel'));g.classList.add('sel');pick=g.dataset.s;document.getElementById('pk').textContent='You chose '+SITES[pick].t+'.'});
+document.getElementById('ck').onclick=()=>{const ch=[...document.querySelectorAll('#rs input:checked')].map(x=>+x.value);const w=document.getElementById('warn');
+ if(!pick){w.textContent='Click a site on the map first.';return} if(ch.length!==3){w.textContent='Tick exactly three reasons.';return}
+ w.textContent='';locked=true;document.getElementById('ck').disabled=true;document.querySelectorAll('#rs input').forEach(x=>x.disabled=true);
+ const okSite=!!SITES[pick].best;rec(3,okSite,'Best site for a new town (you chose '+pick+')','Site A',SITES.A.why);
+ ch.forEach(i=>rec(3,!!REASONS[i][1],'Reason: '+REASONS[i][0],'A good reason is fresh water, flat land, fertile soil or transport',REASONS[i][1]?'':'This is a reason NOT to build there.'));
+ const good=ch.filter(i=>REASONS[i][1]).length;
+ document.getElementById('fb').innerHTML=fbk(okSite,(okSite?'':'The best site is <b>A</b>. Your site: '+SITES[pick].why+' ')+'Site A: '+SITES.A.why)+`<div class="why">Good reasons you ticked: <b>${good} of 3</b> (+${good*PTS} points). The four good reasons were fresh water, flat land, fertile soil and the railway; the others are reasons NOT to build.</div><p><button class="primary" onclick="go(4)">Next level</button></p>`}}
+
+// LEVEL 4 (timer, no speed bonus)
+const QF=[['The land a settlement is built on is its…',['situation','site','density','hierarchy'],1,'Site = the physical land itself (flat? water? safe from floods?).'],
+['Where a settlement is compared with the routes, resources and places around it is its…',['site','situation','ecumene','distribution'],1,'Situation = location in relation to the things around it.'],
+['Statistics Canada calls a place urban if it has at least 1,000 people and at least…',['100 people per km²','400 people per km²','1,000 people per km²','10 people per km²'],1,'A population centre needs 1,000+ people AND 400+ people per km².'],
+['Which physical factor MOST limits settlement in northern Canada?',['Too many rivers','Cold climate and permafrost','Too much flat land','Too many jobs'],1,'Long cold winters and frozen ground make farming and building very hard.'],
+['Fort McMurray grew very fast because of…',['tourism','the oil sands','a university','fishing'],1,'It is a resource town built around the oil sands.'],
+['Halifax grew around…',['a deep, ice-free harbour','a desert oasis','a gold rush','a mountain pass'],0,'Its deep, sheltered harbour stays open all year.'],
+['A town built mainly around one natural resource is a…',['metropolis','resource town','hamlet','suburb'],1,'Resource towns can boom and shrink with the resource.'],
+['In Egypt, most people live along the Nile because of…',['water in a desert country','cold climate','oil sands','railways'],0,'Egypt is mostly desert, so people live where there is water: a linear pattern.']];
+function quick(){let i=0,t,left;const qs=shuffle(QF);
+app.innerHTML=`<div class="card"><h2>Level 4: Quick-Fire Round</h2><p class="sub">20 seconds per question. One try. Every correct answer is ${PTS} points, however fast you are.</p><p>Time: <span class="timer" id="tm">20</span> s</p><div class="bar"><div id="pb"></div></div><div id="q"></div></div>`;
+function show(){clearInterval(t);document.getElementById('pb').style.width=(i/qs.length*100)+'%';
+ if(i>=qs.length){const L=S.lv[4];document.getElementById('q').innerHTML=`<p class="fb ok">Level 4 done: ${L.c} of ${L.n} correct.</p><button class="primary" onclick="go(5)">Next level</button>`;document.getElementById('tm').textContent='–';return}
+ left=20;document.getElementById('tm').textContent=left;const [q,o,a,why]=qs[i];
+ document.getElementById('q').innerHTML=`<p><b>${q}</b></p>`+o.map((x,k)=>`<button class="opt" data-k="${k}">${x}</button>`).join('')+'<div id="fb"></div>';
+ t=setInterval(()=>{left--;document.getElementById('tm').textContent=left;if(left<=0)mark(-1)},1000);
+ function mark(k){clearInterval(t);document.querySelectorAll('.opt').forEach(b=>{b.disabled=true;if(+b.dataset.k===a)b.classList.add('right');else if(+b.dataset.k===k)b.classList.add('wrong')});
+  const ok=k===a;rec(4,ok,q,o[a],why);document.getElementById('fb').innerHTML=(k<0?'<p class="fb bad">Time is up!</p>':'')+fbk(ok,(ok?'':'The answer is <b>'+o[a]+'</b>. ')+why,`<p><button class="primary" id="nx">Next question</button></p>`);document.getElementById('nx').onclick=()=>{i++;show()}}
+ document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>mark(+b.dataset.k))}
+show()}
+
+// LEVEL 5 (all clues, one guess)
+const MT=[['Winnipeg',['I am on flat prairie land.','Two rivers meet in the middle of me.','People met and traded here for thousands of years before the fur trade.','The railway made me the gateway between East and West.'],'The Red and Assiniboine rivers meet at The Forks; the railway made Winnipeg the gateway to the West.'],
+['Halifax',['I am on the Atlantic coast.','My harbour is deep, sheltered and does not freeze.','I have an important naval base.','I am the capital of Nova Scotia.'],'Halifax grew around its deep, ice-free harbour.'],
+['Iqaluit',['I am on a bay on Baffin Island.','Inuit used this place for fishing long before I was a city.','Permafrost and distance make food and fuel very costly here.','I am the capital of Nunavut.'],'Iqaluit is the capital of Nunavut; its cold climate and distance keep the population small.'],
+['Fort McMurray',['I am in the boreal forest in northern Alberta.','Two rivers, the Clearwater and the Athabasca, meet here.','I grew very fast because of one resource.','That resource is the oil sands.'],'Fort McMurray is a resource town built around the oil sands.']];
+const CH=['Winnipeg','Halifax','Iqaluit','Fort McMurray','Montréal','Vancouver'];
+function mystery(){let i=0;const qs=shuffle(MT);
+app.innerHTML=`<div class="card"><h2>Level 5: Mystery Town</h2><p class="sub">Read all four clues, then make ONE guess.</p><div class="bar"><div id="pb"></div></div><div id="q"></div></div>`;
+function show(){document.getElementById('pb').style.width=(i/qs.length*100)+'%';
+ if(i>=qs.length){const L=S.lv[5];document.getElementById('q').innerHTML=`<p class="fb ok">Level 5 done: ${L.c} of ${L.n} correct.</p><button class="primary" onclick="go(6)">See my results</button>`;return}
+ const [ans,cl,why]=qs[i];
+ document.getElementById('q').innerHTML=`<p>Mystery town ${i+1} of ${qs.length}</p>`+cl.map((c,k)=>`<div class="clue"><b>Clue ${k+1}:</b> ${c}</div>`).join('')+`<div class="row" style="margin:10px 0">${CH.map(c=>`<button class="g opt" style="width:auto" data-c="${c}">${c}</button>`).join('')}</div><div id="fb"></div>`;
+ document.querySelectorAll('.g').forEach(b=>b.onclick=()=>{document.querySelectorAll('.g').forEach(x=>{x.disabled=true;if(x.dataset.c===ans)x.classList.add('right')});const ok=b.dataset.c===ans;if(!ok)b.classList.add('wrong');
+  rec(5,ok,'Mystery town: '+cl[1],ans,why);document.getElementById('fb').innerHTML=fbk(ok,(ok?'':'It is <b>'+ans+'</b>. ')+why,`<p><button class="primary" id="nx">Next</button></p>`);document.getElementById('nx').onclick=()=>{i++;show()}})}
+show()}
+
+// FINISH
+const SC=['Name the types of settlement','Explain site and situation','Sort physical and human factors','Choose and defend a good site','Explain why few people live in the North'];
+function finish(){const pct=Math.round(S.score/S.max*100);
+app.innerHTML=`<div class="card"><h2>Quest complete, ${S.name}!</h2><div class="big">${S.score} / ${S.max}</div><p>${pct}% correct</p>
+<table class="tbl"><tr><th>Level</th><th>Correct</th><th>Points</th></tr>${[1,2,3,4,5].map(k=>{const L=S.lv[k]||{c:0,n:0};return `<tr><td>${LN[k]}</td><td>${L.c} of ${L.n}</td><td>${L.c*PTS} / ${L.n*PTS}</td></tr>`}).join('')}</table>
+${S.miss.length?`<h2>Review: what you missed and why</h2>${S.miss.map(m=>`<div class="why"><b>${m.q}</b><br>Correct answer: ${m.correct}. ${m.why}</div>`).join('')}`:'<p class="fb ok">Perfect score: nothing to review!</p>'}
+<h2 style="margin-top:16px">Self-assessment (AS)</h2><p class="sub">Choose how well you can do each one.</p><div id="as"></div>
+<p><b>The factor I think matters MOST for where Canadians live, and why:</b></p><textarea id="r1" rows="2"></textarea>
+<p><b>One thing I am still unsure about, and what I will do about it:</b></p><textarea id="r2" rows="2"></textarea>
+<p><button class="primary" id="pdf">Download my results card (PDF)</button> <button id="cp">Copy my results</button> <button id="again">Play the whole game again</button></p><p id="msg" class="small"></p></div>`;
+document.getElementById('as').innerHTML=SC.map((s,i)=>`<div class="stars"><b>${s}:</b> ${['Not yet','With help','On my own'].map(o=>`<button data-i="${i}" data-o="${o}">${o}</button>`).join('')}</div>`).join('');
+document.querySelectorAll('.stars button').forEach(b=>b.onclick=()=>{S.rate[b.dataset.i]=b.dataset.o;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('primary'));b.classList.add('primary')});
+const msg=t=>document.getElementById('msg').textContent=t;
+document.getElementById('pdf').onclick=()=>{if(Object.keys(S.rate).length<SC.length){msg('Please rate all five skills first.');return}S.r1=document.getElementById('r1').value;S.r2=document.getElementById('r2').value;
+ try{const blob=makePDF();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Settlement_Quest_'+S.name.replace(/\W+/g,'_')+'.pdf';document.body.appendChild(a);a.click();a.remove();msg('Your PDF has been downloaded. Submit it to your teacher.')}catch(e){msg('Download is blocked here. Use Copy my results, or open the game file in a browser.')}};
+document.getElementById('cp').onclick=()=>{S.r1=document.getElementById('r1').value;S.r2=document.getElementById('r2').value;try{navigator.clipboard.writeText(lines().join('\n')).then(()=>msg('Copied!'),()=>msg('Copy was blocked.'))}catch(e){msg('Copy was blocked.')}};
+document.getElementById('again').onclick=()=>{reset();upd();go(1)}}
+function lines(){const L=['SETTLEMENT QUEST: RESULTS CARD','CGC1W Grade 9 Geography - Lesson 3.4 Settlement - Assessment FOR and AS learning','',
+'Name: '+S.name,'Date: '+new Date().toLocaleDateString('en-CA'),'Score: '+S.score+' / '+S.max+' ('+Math.round(S.score/S.max*100)+'%)','','SCORE BY LEVEL (FOR)'];
+[1,2,3,4,5].forEach(k=>{const v=S.lv[k]||{c:0,n:0};L.push('  '+LN[k]+': '+v.c+' of '+v.n+' correct ('+v.c*PTS+' points)')});
+L.push('','WHAT I MISSED AND WHY');if(!S.miss.length)L.push('  Nothing: perfect score.');S.miss.forEach(m=>{L.push('  - '+m.q);L.push('    Correct: '+m.correct+'. '+m.why)});
+L.push('','SELF-ASSESSMENT (AS)');SC.forEach((s,i)=>L.push('  '+s+': '+(S.rate[i]||'not chosen')));
+L.push('','Most important factor and why: '+(S.r1||'-'),'Still unsure about / my plan: '+(S.r2||'-'),'','Teacher feedback: ______________________________________________');return L}
+// styled PDF writer: draws the results card like the screen (no internet needed)
+function makePDF(){
+ const PW=612,PH=792,M=40,CW=PW-2*M;const NAVY='0.122 0.220 0.392',INK='0.10 0.10 0.10',GREY='0.35 0.35 0.35',LINE='0.67 0.69 0.75',WHY='1 0.973 0.902',WHYB='0.878 0.761 0.478',LIGHT='0.933 0.949 0.973';
+ const clean=t=>String(t).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/[–—]/g,'-').replace(/→/g,'->').replace(/[^\x20-\x7e]/g,'');
+ const esc=t=>clean(t).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+ const tw=(t,sz,bold)=>clean(t).length*sz*(bold?0.56:0.51);
+ const wrap=(t,sz,w,bold)=>{const words=clean(t).split(' ');const out=[];let cur='';words.forEach(wd=>{const n=cur?cur+' '+wd:wd;if(tw(n,sz,bold)>w&&cur){out.push(cur);cur=wd}else cur=n});if(cur)out.push(cur);return out.length?out:['']};
+ const pages=[];let c='',y=0;
+ function newPage(){if(c)pages.push(c);c='';y=PH-M}
+ function need(h){if(y-h<M){newPage()}}
+ const rect=(x,yy,w,h,fill,stroke)=>{if(fill)c+=fill+' rg '+x+' '+yy+' '+w+' '+h+' re f\n';if(stroke)c+=stroke+' RG 0.8 w '+x+' '+yy+' '+w+' '+h+' re S\n'};
+ const text=(t,x,yy,sz,bold,col)=>{c+='BT /'+(bold?'F2':'F1')+' '+sz+' Tf '+(col||INK)+' rg '+x+' '+yy+' Td ('+esc(t)+') Tj ET\n'};
+ const para=(t,sz,bold,col,x,w)=>{wrap(t,sz,w||CW,bold).forEach(l=>{need(sz+4);text(l,x||M,y-sz,sz,bold,col);y-=sz+4})};
+ const heading=t=>{y-=8;need(26);text(t,M,y-17,15,true,NAVY);y-=24};
+ function table(cols,rows,widths,hdr){const sz=10.5;
+  const draw=(cells,isH)=>{const ls=cells.map((v,i)=>wrap(v,sz,widths[i]-12,isH));const h=Math.max(...ls.map(l=>l.length))*(sz+3)+10;need(h);let x=M;
+   cells.forEach((v,i)=>{rect(x,y-h,widths[i],h,isH?NAVY:'1 1 1',LINE);ls[i].forEach((l,k)=>text(l,x+6,y-8-sz-k*(sz+3)+2,sz,isH,isH?'1 1 1':INK));x+=widths[i]});y-=h};
+  if(hdr)draw(cols,true);rows.forEach(r=>draw(r,false));y-=6}
+ function whybox(title,body){const sz=10.5,w=CW-20;const a=wrap(title,sz,w,true),b2=wrap(body,sz,w,false);const h=(a.length+b2.length)*(sz+4)+14;need(h+6);
+  rect(M,y-h,CW,h,WHY,WHYB);let yy=y-8-sz;a.forEach(l=>{text(l,M+10,yy,sz,true);yy-=sz+4});b2.forEach(l=>{text(l,M+10,yy,sz,false);yy-=sz+4});y-=h+6}
+ newPage();
+ // banner
+ const bh=64;rect(0,PH-bh,PW,bh,NAVY);text('Settlement Quest: Why Do People Live Where They Do?',M,PH-30,15,true,'1 1 1');
+ text('CGC1W Grade 9 Geography - Lesson 3.4 Settlement - Assessment FOR and AS learning',M,PH-50,9.5,false,'0.85 0.88 0.95');
+ const sc='Score: '+S.score+' / '+S.max,sw=tw(sc,11,true)+24;rect(PW-M-sw,PH-44,sw,22,'1 1 1');text(sc,PW-M-sw+12,PH-37,11,true,NAVY);
+ y=PH-bh-14;
+ // name/date row
+ rect(M,y-24,CW,24,LIGHT,LINE);text('Name: '+S.name,M+8,y-16,11,true);text('Date: '+new Date().toLocaleDateString('en-CA'),M+CW/2,y-16,11,false);y-=36;
+ text('Quest complete, '+S.name+'!',M,y-18,18,true,NAVY);y-=30;
+ text(S.score+' / '+S.max,M,y-34,36,true,NAVY);y-=46;
+ text(Math.round(S.score/S.max*100)+'% correct',M,y-12,12,false);y-=24;
+ table(['Level','Correct','Points'],[1,2,3,4,5].map(k=>{const L=S.lv[k]||{c:0,n:0};return [LN[k],L.c+' of '+L.n,(L.c*PTS)+' / '+(L.n*PTS)]}),[CW*0.56,CW*0.22,CW*0.22],true);
+ heading('Review: what you missed and why');
+ if(!S.miss.length)para('Perfect score: nothing to review!',11,true,'0.106 0.431 0.227');
+ S.miss.forEach(m=>whybox(m.q,'Correct answer: '+m.correct+'. '+m.why));
+ heading('Self-assessment (AS)');
+ table(['I can...','Not yet','With help','On my own'],SC.map((s,i)=>[s].concat(['Not yet','With help','On my own'].map(o=>S.rate[i]===o?'[X]':'[  ]'))),[CW*0.55,CW*0.15,CW*0.15,CW*0.15],true);
+ heading('My reflection');
+ whybox('The factor I think matters MOST for where Canadians live, and why:',S.r1||'-');
+ whybox('One thing I am still unsure about, and what I will do about it:',S.r2||'-');
+ heading('Teacher feedback');need(60);rect(M,y-56,CW,56,'1 1 1',LINE);y-=64;
+ pages.push(c);
+ // footer page numbers
+ const P=pages.map((pc,i)=>pc+'BT /F1 9 Tf '+GREY+' rg '+M+' 22 Td ('+esc('Settlement Quest results card - '+S.name+' - page '+(i+1)+' of '+pages.length)+') Tj ET\n');
+ const objs=[];objs[1]='<< /Type /Catalog /Pages 2 0 R >>';objs[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';objs[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+ const kids=[];P.forEach((pc,pi)=>{const pid=5+pi*2,cid=6+pi*2;kids.push(pid+' 0 R');objs[pid]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '+cid+' 0 R >>';objs[cid]='<< /Length '+pc.length+' >>\nstream\n'+pc+'\nendstream'});
+ objs[2]='<< /Type /Pages /Kids ['+kids.join(' ')+'] /Count '+kids.length+' >>';
+ let pdf='%PDF-1.4\n';const off=[];for(let i=1;i<objs.length;i++){off[i]=pdf.length;pdf+=i+' 0 obj\n'+objs[i]+'\nendobj\n'}
+ const x=pdf.length;pdf+='xref\n0 '+objs.length+'\n0000000000 65535 f \n';for(let i=1;i<objs.length;i++)pdf+=String(off[i]).padStart(10,'0')+' 00000 n \n';
+ pdf+='trailer\n<< /Size '+objs.length+' /Root 1 0 R >>\nstartxref\n'+x+'\n%%EOF';return new Blob([pdf],{type:'application/pdf'})}
+upd();go(0);
+</script></body></html>
